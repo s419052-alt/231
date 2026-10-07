@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>食物熱量與營養素換算程序</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f8fafc;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .tab-btn.active {
+            border-bottom: 3px solid #10b981;
+            color: #059669;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Header Navigation -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-md shadow-emerald-200">
+                        <i class="fa-solid fa-utensils text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold text-slate-800 leading-tight">食物熱量換算程序</h1>
+                        <p class="text-xs text-slate-500">Food Calorie & Nutrition Calculator</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="openTdeeModal()" class="px-3 py-1.5 text-xs sm:text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-calculator"></i>
+                        <span>TDEE & 目標設定</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Navigation Tabs -->
+            <nav class="flex space-x-6 overflow-x-auto no-scrollbar border-t border-slate-100 pt-1 text-sm text-slate-600">
+                <button onclick="switchTab('macro')" id="tab-macro" class="tab-btn active py-2.5 whitespace-nowrap flex items-center gap-2">
+                    <i class="fa-solid fa-scale-balanced text-xs"></i> 營養素換算器
+                </button>
+                <button onclick="switchTab('portions')" id="tab-portions" class="tab-btn py-2.5 whitespace-nowrap flex items-center gap-2">
+                    <i class="fa-solid fa-apple-whole text-xs"></i> 六大類食物換算
+                </button>
+                <button onclick="switchTab('database')" id="tab-database" class="tab-btn py-2.5 whitespace-nowrap flex items-center gap-2">
+                    <i class="fa-solid fa-magnifying-glass text-xs"></i> 常見外食資料庫
+                </button>
+                <button onclick="switchTab('tracker')" id="tab-tracker" class="tab-btn py-2.5 whitespace-nowrap flex items-center gap-2">
+                    <i class="fa-solid fa-clipboard-list text-xs"></i> 每日飲食日誌
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content Body -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- TAB 1: 三大營養素換算器 -->
+        <section id="content-macro" class="tab-content space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Input Panel -->
+                <div class="lg:col-span-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-calculator text-emerald-500"></i> 三大營養素與食物自動換算
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-1">輸入食物名稱自動帶入營養成分，或直接調整營養素與克數，即時換算總卡路里。</p>
+                    </div>
+
+                    <div class="space-y-4">
+                        <!-- 自動食物搜尋與自動帶入區 -->
+                        <div class="relative">
+                            <label class="block text-xs font-semibold text-slate-700 mb-1 flex justify-between items-center">
+                                <span><i class="fa-solid fa-wand-magic-sparkles text-emerald-500 mr-1"></i>輸入食物名稱自動換算</span>
+                                <span class="text-[10px] text-emerald-600">輸入關鍵字自動帶入熱量</span>
+                            </label>
+                            <div class="relative">
+                                <input type="text" id="input-food-name" autocomplete="off" placeholder="輸入食物（例如：白飯、雞胸肉、牛肉麵...）" oninput="handleFoodNameInput()" onfocus="handleFoodNameInput()" class="w-full pl-9 pr-4 py-2.5 rounded-xl border border-emerald-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm bg-emerald-50/20">
+                                <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-emerald-500 text-xs"></i>
+                            </div>
+                            <!-- 自動搜尋下拉提示列表 -->
+                            <div id="food-suggestions" class="hidden absolute z-20 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-52 overflow-y-auto text-xs custom-scrollbar"></div>
+                        </div>
+
+                        <!-- 份數 / 倍率快速調整 -->
+                        <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-600 mb-1">食用份數倍率</label>
+                                <div class="flex items-center gap-1">
+                                    <input type="number" id="input-portion-multiplier" min="0.1" step="0.1" value="1.0" oninput="applyPortionMultiplier()" class="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-center font-bold bg-white">
+                                    <span class="text-xs text-slate-500 font-medium">倍</span>
+                                </div>
+                            </div>
+                            <div class="flex flex-col justify-center">
+                                <span class="text-[11px] font-semibold text-slate-500 mb-1">快速切換份量</span>
+                                <div class="flex gap-1">
+                                    <button onclick="setMultiplier(0.5)" class="px-2 py-1 bg-white border border-slate-200 hover:bg-emerald-50 hover:border-emerald-300 text-[10px] rounded-lg transition font-medium">0.5x</button>
+                                    <button onclick="setMultiplier(1.0)" class="px-2 py-1 bg-white border border-slate-200 hover:bg-emerald-50 hover:border-emerald-300 text-[10px] rounded-lg transition font-medium">1.0x</button>
+                                    <button onclick="setMultiplier(1.5)" class="px-2 py-1 bg-white border border-slate-200 hover:bg-emerald-50 hover:border-emerald-300 text-[10px] rounded-lg transition font-medium">1.5x</button>
+                                    <button onclick="setMultiplier(2.0)" class="px-2 py-1 bg-white border border-slate-200 hover:bg-emerald-50 hover:border-emerald-300 text-[10px] rounded-lg transition font-medium">2.0x</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1 flex justify-between">
+                                <span>碳水化合物 (Carbohydrates)</span>
+                                <span class="text-emerald-600 font-mono">1g = 4 kcal</span>
+                            </label>
+                            <div class="relative rounded-xl shadow-sm">
+                                <input type="number" id="input-carbs" min="0" step="0.1" value="30" oninput="calculateMacros()" class="w-full pl-4 pr-12 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm">
+                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-xs text-slate-400">g</div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1 flex justify-between">
+                                <span>蛋白質 (Protein)</span>
+                                <span class="text-blue-600 font-mono">1g = 4 kcal</span>
+                            </label>
+                            <div class="relative rounded-xl shadow-sm">
+                                <input type="number" id="input-protein" min="0" step="0.1" value="25" oninput="calculateMacros()" class="w-full pl-4 pr-12 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm">
+                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-xs text-slate-400">g</div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1 flex justify-between">
+                                <span>脂肪 (Fat)</span>
+                                <span class="text-amber-600 font-mono">1g = 9 kcal</span>
+                            </label>
+                            <div class="relative rounded-xl shadow-sm">
+                                <input type="number" id="input-fat" min="0" step="0.1" value="10" oninput="calculateMacros()" class="w-full pl-4 pr-12 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm">
+                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-xs text-slate-400">g</div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1 flex justify-between">
+                                <span>酒精 (Alcohol, 選填)</span>
+                                <span class="text-purple-600 font-mono">1g = 7 kcal</span>
+                            </label>
+                            <div class="relative rounded-xl shadow-sm">
+                                <input type="number" id="input-alcohol" min="0" step="0.1" value="0" oninput="calculateMacros()" class="w-full pl-4 pr-12 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm">
+                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-xs text-slate-400">g</div>
+                            </div>
+                        </div>
+
+                        <button onclick="addCustomFoodToTracker()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl transition shadow-sm flex items-center justify-center gap-2 text-sm">
+                            <i class="fa-solid fa-plus"></i> 加入每日飲食日誌
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Results & Chart Panel -->
+                <div class="lg:col-span-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-6">
+                    <div>
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <span class="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">計算結果</span>
+                                <h3 class="text-2xl font-black text-slate-800 mt-2"><span id="res-total-calories">310</span> <span class="text-base font-medium text-slate-500">kcal</span></h3>
+                            </div>
+                            <button onclick="copyMacroResult()" class="text-xs text-slate-500 hover:text-emerald-600 bg-slate-100 hover:bg-emerald-50 px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+                                <i class="fa-regular fa-copy"></i> 複製數據
+                            </button>
+                        </div>
+
+                        <!-- Macro Breakdown Grid -->
+                        <div class="grid grid-cols-3 gap-3 mt-4">
+                            <div class="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100 text-center">
+                                <span class="text-xs text-slate-500 block">碳水化合物</span>
+                                <span id="res-carbs-cal" class="text-sm font-bold text-emerald-700">120 kcal</span>
+                                <span id="res-carbs-pct" class="text-[10px] text-emerald-600 block">(38.7%)</span>
+                            </div>
+                            <div class="bg-blue-50/50 p-3 rounded-xl border border-blue-100 text-center">
+                                <span class="text-xs text-slate-500 block">蛋白質</span>
+                                <span id="res-protein-cal" class="text-sm font-bold text-blue-700">100 kcal</span>
+                                <span id="res-protein-pct" class="text-[10px] text-blue-600 block">(32.3%)</span>
+                            </div>
+                            <div class="bg-amber-50/50 p-3 rounded-xl border border-amber-100 text-center">
+                                <span class="text-xs text-slate-500 block">脂肪</span>
+                                <span id="res-fat-cal" class="text-sm font-bold text-amber-700">90 kcal</span>
+                                <span id="res-fat-pct" class="text-[10px] text-amber-600 block">(29.0%)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chart Container -->
+                    <div class="relative h-48 w-full flex items-center justify-center">
+                        <canvas id="macroChart"></canvas>
+                    </div>
+
+                    <div class="text-xs text-slate-400 bg-slate-50 p-3 rounded-xl border border-slate-100 flex items-center gap-2">
+                        <i class="fa-solid fa-circle-info text-slate-400"></i>
+                        <span>備註：此處計算依據衛福部標準（碳水 4 kcal/g、蛋白質 4 kcal/g、脂肪 9 kcal/g）。</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: 六大類食物份數換算 -->
+        <section id="content-portions" class="tab-content hidden space-y-6">
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-layer-group text-emerald-500"></i> 衛生福利部「六大類食物」一份熱量與換算
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-1">依據國健署標準，快速了解每一份量對應的重量、熱量與三大營養素。</p>
+                </div>
+
+                <!-- Interactive Converter Tool -->
+                <div class="bg-slate-50 p-4 sm:p-5 rounded-xl border border-slate-200">
+                    <h3 class="text-sm font-bold text-slate-700 mb-3 flex items-center gap-1.5">
+                        <i class="fa-solid fa-sliders text-emerald-600"></i> 快速份數試算器
+                    </h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">選擇食物類別</label>
+                            <select id="portion-category-select" onchange="updatePortionCalculator()" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white">
+                                <option value="grains">全穀雜糧類 (每份 70 kcal)</option>
+                                <option value="protein_low">豆魚蛋肉類 - 低脂 (每份 75 kcal)</option>
+                                <option value="protein_mid">豆魚蛋肉類 - 中脂 (每份 120 kcal)</option>
+                                <option value="veggies">蔬菜類 (每份 25 kcal)</option>
+                                <option value="fruits">水果類 (每份 60 kcal)</option>
+                                <option value="dairy_full">乳品類 - 全脂 (每份 150 kcal)</option>
+                                <option value="fat">油脂與堅果種子類 (每份 45 kcal)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">份數 (Servings)</label>
+                            <input type="number" id="portion-count-input" value="2" min="0.5" step="0.5" oninput="updatePortionCalculator()" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm">
+                        </div>
+                        <div class="bg-white p-3 rounded-xl border border-slate-200 flex flex-col justify-center">
+                            <span class="text-xs text-slate-500">預估熱量與成分</span>
+                            <span id="portion-calc-result" class="text-base font-bold text-emerald-600">140 kcal (碳水 30g, 蛋白 4g)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Food Groups Cards Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- 全穀雜糧類 -->
+                    <div class="border border-slate-200 rounded-xl p-4 hover:border-emerald-300 transition bg-white space-y-2">
+                        <div class="flex justify-between items-center">
+                            <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-amber-500"></span> 全穀雜糧類
+                            </h4>
+                            <span class="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded">70 kcal / 份</span>
+                        </div>
+                        <p class="text-xs text-slate-500">碳水 15g | 蛋白質 2g | 脂肪 0g</p>
+                        <div class="text-xs text-slate-600 pt-2 border-t border-slate-100 space-y-1">
+                            <p>• 白飯 ¼ 碗 (50g)</p>
+                            <p>• 熟麵條 ½ 碗 (60g)</p>
+                            <p>• 薄吐司 1 片 (30g) / 地瓜 55g</p>
+                        </div>
+                    </div>
+
+                    <!-- 豆魚蛋肉類 -->
+                    <div class="border border-slate-200 rounded-xl p-4 hover:border-emerald-300 transition bg-white space-y-2">
+                        <div class="flex justify-between items-center">
+                            <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-red-500"></span> 豆魚蛋肉類
+                            </h4>
+                            <span class="text-xs font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded">75 ~ 120 kcal / 份</span>
+                        </div>
+                        <p class="text-xs text-slate-500">蛋白質 7g | 脂肪 3 ~ 10g</p>
+                        <div class="text-xs text-slate-600 pt-2 border-t border-slate-100 space-y-1">
+                            <p>• 雞蛋 1 顆 (55g)</p>
+                            <p>• 去皮雞胸肉 35g / 豬里肌 35g</p>
+                            <p>• 嫩豆腐 140g / 無糖豆漿 190ml</p>
+                        </div>
+                    </div>
+
+                    <!-- 蔬菜類 -->
+                    <div class="border border-slate-200 rounded-xl p-4 hover:border-emerald-300 transition bg-white space-y-2">
+                        <div class="flex justify-between items-center">
+                            <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span> 蔬菜類
+                            </h4>
+                            <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">25 kcal / 份</span>
+                        </div>
+                        <p class="text-xs text-slate-500">碳水 5g | 蛋白質 1g | 脂肪 0g</p>
+                        <div class="text-xs text-slate-600 pt-2 border-t border-slate-100 space-y-1">
+                            <p>• 煮熟蔬菜 ½ 碗 (100g)</p>
+                            <p>• 生蔬菜 100g</p>
+                            <p>• 菇類 / 木耳 100g</p>
+                        </div>
+                    </div>
+
+                    <!-- 水果類 -->
+                    <div class="border border-slate-200 rounded-xl p-4 hover:border-emerald-300 transition bg-white space-y-2">
+                        <div class="flex justify-between items-center">
+                            <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-orange-400"></span> 水果類
+                            </h4>
+                            <span class="text-xs font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded">60 kcal / 份</span>
+                        </div>
+                        <p class="text-xs text-slate-500">碳水 15g | 蛋白質 0g | 脂肪 0g</p>
+                        <div class="text-xs text-slate-600 pt-2 border-t border-slate-100 space-y-1">
+                            <p>• 小蘋果 1 顆 (130g)</p>
+                            <p>• 香蕉 ½ 根 (70g)</p>
+                            <p>• 切塊水果 1 碗 (150g)</p>
+                        </div>
+                    </div>
+
+                    <!-- 乳品類 -->
+                    <div class="border border-slate-200 rounded-xl p-4 hover:border-emerald-300 transition bg-white space-y-2">
+                        <div class="flex justify-between items-center">
+                            <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-blue-400"></span> 乳品類
+                            </h4>
+                            <span class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">150 kcal / 份</span>
+                        </div>
+                        <p class="text-xs text-slate-500">碳水 12g | 蛋白質 8g | 脂肪 8g</p>
+                        <div class="text-xs text-slate-600 pt-2 border-t border-slate-100 space-y-1">
+                            <p>• 全脂鮮乳 240ml</p>
+                            <p>• 無糖優格 210g</p>
+                            <p>• 起司片 2 片 (40g)</p>
+                        </div>
+                    </div>
+
+                    <!-- 油脂與堅果種子類 -->
+                    <div class="border border-slate-200 rounded-xl p-4 hover:border-emerald-300 transition bg-white space-y-2">
+                        <div class="flex justify-between items-center">
+                            <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-yellow-600"></span> 油脂與堅果種子類
+                            </h4>
+                            <span class="text-xs font-bold text-yellow-700 bg-yellow-50 px-2 py-0.5 rounded">45 kcal / 份</span>
+                        </div>
+                        <p class="text-xs text-slate-500">脂肪 5g</p>
+                        <div class="text-xs text-slate-600 pt-2 border-t border-slate-100 space-y-1">
+                            <p>• 植物油 1 茶匙 (5g)</p>
+                            <p>• 堅果種子 1 茶匙 (7g)</p>
+                            <p>• 核桃 2 顆 / 花生 10 粒</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: 常見外食與食材資料庫 -->
+        <section id="content-database" class="tab-content hidden space-y-6">
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
+                <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-database text-emerald-500"></i> 常見食物與外食熱量資料庫
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-1">搜尋日常主食、便當外食與常見飲品，迅速加入日誌或試算熱量。</p>
+                    </div>
+
+                    <!-- Search & Filter Controls -->
+                    <div class="flex items-center gap-2">
+                        <div class="relative">
+                            <input type="text" id="food-search-input" placeholder="搜尋食物名稱..." oninput="filterFoodDatabase()" class="pl-9 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 w-48 sm:w-64">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-xs"></i>
+                        </div>
+                        <select id="food-category-filter" onchange="filterFoodDatabase()" class="py-2 px-3 border border-slate-200 rounded-xl text-sm bg-white">
+                            <option value="all">全部類別</option>
+                            <option value="stables">主食全穀</option>
+                            <option value="protein">蛋豆魚肉</option>
+                            <option value="meals">外食便當</option>
+                            <option value="snacks">小吃點心</option>
+                            <option value="drinks">飲料飲料</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Food List Grid -->
+                <div id="food-db-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[550px] overflow-y-auto pr-1 custom-scrollbar">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: 每日飲食日誌與熱量平衡 -->
+        <section id="content-tracker" class="tab-content hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Summary & Target Balance -->
+                <div class="lg:col-span-4 space-y-4">
+                    <!-- Calorie Budget Card -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <div class="flex justify-between items-center">
+                            <h3 class="font-bold text-slate-800 text-sm">今日熱量赤字與預算</h3>
+                            <button onclick="openTdeeModal()" class="text-xs text-emerald-600 hover:underline">修改目標</button>
+                        </div>
+
+                        <div class="text-center py-2">
+                            <span class="text-xs text-slate-500 block">剩餘可攝取卡路里</span>
+                            <span id="tracker-remaining-cal" class="text-3xl font-black text-emerald-600">1,500</span>
+                            <span class="text-xs text-slate-400 block mt-1">目標: <span id="tracker-target-cal">2,000</span> kcal | 已攝取: <span id="tracker-consumed-cal">500</span> kcal</span>
+                        </div>
+
+                        <!-- Progress Bar -->
+                        <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+                            <div id="tracker-progress-bar" class="bg-emerald-500 h-3 rounded-full transition-all duration-300" style="width: 25%"></div>
+                        </div>
+
+                        <!-- Mini Macro Progress -->
+                        <div class="grid grid-cols-3 gap-2 pt-2 text-center text-xs">
+                            <div class="bg-slate-50 p-2 rounded-lg">
+                                <span class="text-slate-500 block">碳水</span>
+                                <span id="tracker-carbs-val" class="font-bold text-slate-700">60g</span>
+                            </div>
+                            <div class="bg-slate-50 p-2 rounded-lg">
+                                <span class="text-slate-500 block">蛋白質</span>
+                                <span id="tracker-protein-val" class="font-bold text-slate-700">30g</span>
+                            </div>
+                            <div class="bg-slate-50 p-2 rounded-lg">
+                                <span class="text-slate-500 block">脂肪</span>
+                                <span id="tracker-fat-val" class="font-bold text-slate-700">15g</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="clearDailyLog()" class="w-full py-2.5 border border-red-200 text-red-600 hover:bg-red-50 rounded-xl text-xs font-medium transition flex items-center justify-center gap-1.5">
+                        <i class="fa-regular fa-trash-can"></i> 清空今日飲食紀錄
+                    </button>
+                </div>
+
+                <!-- Log Items Panel -->
+                <div class="lg:col-span-8 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-emerald-500"></i> 今日飲食清單
+                        </h3>
+                        <span id="log-count-badge" class="text-xs font-medium bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full">0 項項目</span>
+                    </div>
+
+                    <!-- Log Table / List -->
+                    <div class="space-y-3 max-h-[450px] overflow-y-auto pr-1 custom-scrollbar" id="daily-log-list">
+                        <!-- Rendered by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- TDEE & Goal Modal -->
+    <div id="tdee-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 space-y-5 shadow-xl animate-fade-in">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-emerald-500"></i> 設定 TDEE 與每日熱量目標
+                </h3>
+                <button onclick="closeTdeeModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="space-y-3 text-sm">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">性別</label>
+                        <select id="tdee-gender" class="w-full px-3 py-2 border rounded-xl text-sm">
+                            <option value="male">男</option>
+                            <option value="female">女</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">年齡 (歲)</label>
+                        <input type="number" id="tdee-age" value="28" class="w-full px-3 py-2 border rounded-xl text-sm">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">身高 (cm)</label>
+                        <input type="number" id="tdee-height" value="170" class="w-full px-3 py-2 border rounded-xl text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">體重 (kg)</label>
+                        <input type="number" id="tdee-weight" value="65" class="w-full px-3 py-2 border rounded-xl text-sm">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">日常活動量</label>
+                    <select id="tdee-activity" class="w-full px-3 py-2 border rounded-xl text-sm">
+                        <option value="1.2">久坐 / 無規律運動 (BMR × 1.2)</option>
+                        <option value="1.375">輕度運動 (週運動 1-3 天, BMR × 1.375)</option>
+                        <option value="1.55" selected>中度運動 (週運動 3-5 天, BMR × 1.55)</option>
+                        <option value="1.725">高度運動 (週運動 6-7 天, BMR × 1.725)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">飲食目標</label>
+                    <select id="tdee-goal" class="w-full px-3 py-2 border rounded-xl text-sm">
+                        <option value="-500">溫和減脂 (-500 kcal / 日)</option>
+                        <option value="-300">微赤字減脂 (-300 kcal / 日)</option>
+                        <option value="0" selected>維持體重 (TDEE 原值)</option>
+                        <option value="300">精準增肌 (+300 kcal / 日)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-100 text-xs text-emerald-800">
+                估算 BMR: <span id="modal-bmr-val" class="font-bold">1,550</span> kcal | 估算 TDEE: <span id="modal-tdee-val" class="font-bold">2,400</span> kcal
+            </div>
+
+            <button onclick="saveTdeeGoal()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition text-sm">
+                儲存目標設定
+            </button>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-slate-800 text-white px-4 py-3 rounded-xl shadow-lg text-sm flex items-center gap-2 transform translate-y-20 opacity-0 transition-all duration-300 z-50">
+        <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400"></i>
+        <span id="toast-msg">已新增至日誌！</span>
+    </div>
+
+    <script>
+        // Core Food Database
+        const foodDatabase = [
+            { id: 1, name: "白飯 (一碗)", category: "stables", weight: "200g", calories: 280, carbs: 60, protein: 5, fat: 1, icon: "fa-bowl-rice" },
+            { id: 2, name: "糙米飯 (一碗)", category: "stables", weight: "200g", calories: 280, carbs: 58, protein: 6, fat: 2, icon: "fa-bowl-rice" },
+            { id: 3, name: "熟麵條 (一碗)", category: "stables", weight: "150g", calories: 220, carbs: 45, protein: 7, fat: 1, icon: "fa-plate-wheat" },
+            { id: 4, name: "烤地瓜 (中型)", category: "stables", weight: "150g", calories: 190, carbs: 43, protein: 3, fat: 1, icon: "fa-cubes" },
+            { id: 5, name: "白吐司 (兩片)", category: "stables", weight: "100g", calories: 280, carbs: 50, protein: 8, fat: 4, icon: "fa-bread-slice" },
+            { id: 6, name: "去皮雞胸肉", category: "protein", weight: "100g", calories: 120, carbs: 0, protein: 24, fat: 2, icon: "fa-drumstick-bite" },
+            { id: 7, name: "水煮雞蛋 (一顆)", category: "protein", weight: "55g", calories: 75, carbs: 0.5, protein: 7, fat: 5, icon: "fa-egg" },
+            { id: 8, name: "嫩豆腐 (半盒)", category: "protein", weight: "140g", calories: 75, carbs: 2, protein: 7, fat: 4, icon: "fa-cube" },
+            { id: 9, name: "無糖豆漿 (一杯)", category: "drinks", weight: "240ml", calories: 85, carbs: 3, protein: 8, fat: 4, icon: "fa-glass-water" },
+            { id: 10, name: "炸雞腿便當", category: "meals", weight: "1份", calories: 900, carbs: 110, protein: 35, fat: 38, icon: "fa-box" },
+            { id: 11, name: "滷排骨便當", category: "meals", weight: "1份", calories: 800, carbs: 105, protein: 30, fat: 30, icon: "fa-box" },
+            { id: 12, name: "豬肉水餃 (10顆)", category: "meals", weight: "200g", calories: 550, carbs: 60, protein: 20, fat: 25, icon: "fa-dumpling" },
+            { id: 13, name: "紅燒牛肉麵", category: "meals", weight: "1碗", calories: 750, carbs: 80, protein: 35, fat: 30, icon: "fa-bowl-food" },
+            { id: 14, name: "珍珠奶茶 (全糖)", category: "drinks", weight: "700ml", calories: 650, carbs: 90, protein: 3, fat: 28, icon: "fa-mug-hot" },
+            { id: 15, name: "美式咖啡 (無糖)", category: "drinks", weight: "350ml", calories: 10, carbs: 1, protein: 0.5, fat: 0, icon: "fa-coffee" },
+            { id: 16, name: "美式炸薯條 (中份)", category: "snacks", weight: "110g", calories: 330, carbs: 42, protein: 4, fat: 16, icon: "fa-cheese" },
+            { id: 17, name: "蘋果 (小顆1顆)", category: "snacks", weight: "130g", calories: 60, carbs: 15, protein: 0, fat: 0, icon: "fa-apple-whole" },
+            { id: 18, name: "堅果 (一小把)", category: "snacks", weight: "15g", calories: 95, carbs: 3, protein: 3, fat: 8, icon: "fa-seedling" }
+        ];
+
+        // State Management
+        let dailyLog = JSON.parse(localStorage.getItem('dailyLog')) || [];
+        let userTargetCal = parseInt(localStorage.getItem('targetCal')) || 2000;
+        let macroChartInstance = null;
+        let currentSelectedBaseFood = null; // 保存當前選取之基準食物資料
+
+        // Initialize on load
+        window.onload = function() {
+            initMacroChart();
+            calculateMacros();
+            renderFoodDatabase(foodDatabase);
+            renderDailyLog();
+            updateTdeeModalCalculations();
+
+            // 點擊頁面其他區域時關閉食物自動搜尋建議選單
+            document.addEventListener('click', function(e) {
+                const sug = document.getElementById('food-suggestions');
+                const nameInput = document.getElementById('input-food-name');
+                if (sug && !sug.contains(e.target) && e.target !== nameInput) {
+                    sug.classList.add('hidden');
+                }
+            });
+        };
+
+        // 食物名稱輸入時即時搜尋並呈現提示選單
+        function handleFoodNameInput() {
+            const query = document.getElementById('input-food-name').value.trim().toLowerCase();
+            const sugBox = document.getElementById('food-suggestions');
+
+            if (!query) {
+                sugBox.classList.add('hidden');
+                return;
+            }
+
+            const matches = foodDatabase.filter(f => f.name.toLowerCase().includes(query));
+
+            if (matches.length === 0) {
+                sugBox.classList.add('hidden');
+                return;
+            }
+
+            sugBox.innerHTML = '';
+            matches.forEach(food => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'p-2.5 hover:bg-emerald-50 cursor-pointer border-b border-slate-100 flex justify-between items-center transition';
+                itemDiv.innerHTML = `
+                    <div>
+                        <span class="font-bold text-slate-800">${food.name}</span>
+                        <span class="text-[10px] text-slate-400 ml-1">(${food.weight})</span>
+                    </div>
+                    <div class="text-right">
+                        <span class="font-bold text-emerald-600">${food.calories} kcal</span>
+                        <span class="text-[10px] text-slate-400 block">碳:${food.carbs}g 蛋:${food.protein}g 脂:${food.fat}g</span>
+                    </div>
+                `;
+                itemDiv.onclick = function() {
+                    selectFoodItem(food);
+                    sugBox.classList.add('hidden');
+                };
+                sugBox.appendChild(itemDiv);
+            });
+
+            sugBox.classList.remove('hidden');
+        }
+
+        // 點擊自動建議食物項目時自動填入熱量與營養素
+        function selectFoodItem(food) {
+            document.getElementById('input-food-name').value = food.name;
+            currentSelectedBaseFood = food;
+
+            // 重置倍率為 1.0
+            document.getElementById('input-portion-multiplier').value = 1.0;
+
+            // 自動填入三大營養素
+            document.getElementById('input-carbs').value = food.carbs;
+            document.getElementById('input-protein').value = food.protein;
+            document.getElementById('input-fat').value = food.fat;
+            document.getElementById('input-alcohol').value = 0;
+
+            calculateMacros();
+            showToast(`已自動帶入「${food.name}」熱量與營養素！`);
+        }
+
+        // 調整份量倍率時自動等比例更新營養素與熱量
+        function applyPortionMultiplier() {
+            const mult = parseFloat(document.getElementById('input-portion-multiplier').value) || 1.0;
+            if (currentSelectedBaseFood) {
+                document.getElementById('input-carbs').value = (currentSelectedBaseFood.carbs * mult).toFixed(1);
+                document.getElementById('input-protein').value = (currentSelectedBaseFood.protein * mult).toFixed(1);
+                document.getElementById('input-fat').value = (currentSelectedBaseFood.fat * mult).toFixed(1);
+            }
+            calculateMacros();
+        }
+
+        function setMultiplier(val) {
+            document.getElementById('input-portion-multiplier').value = val;
+            applyPortionMultiplier();
+        }
+
+        // Tab Switcher
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
+
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+            document.getElementById(`content-${tabId}`).classList.remove('hidden');
+        }
+
+        function calculateMacros() {
+            const carbs = parseFloat(document.getElementById('input-carbs').value) || 0;
+            const protein = parseFloat(document.getElementById('input-protein').value) || 0;
+            const fat = parseFloat(document.getElementById('input-fat').value) || 0;
+            const alcohol = parseFloat(document.getElementById('input-alcohol').value) || 0;
+
+            const carbsCal = carbs * 4;
+            const proteinCal = protein * 4;
+            const fatCal = fat * 9;
+            const alcoholCal = alcohol * 7;
+            const totalCal = carbsCal + proteinCal + fatCal + alcoholCal;
+
+            document.getElementById('res-total-calories').innerText = Math.round(totalCal);
+            document.getElementById('res-carbs-cal').innerText = `${Math.round(carbsCal)} kcal`;
+            document.getElementById('res-protein-cal').innerText = `${Math.round(proteinCal)} kcal`;
+            document.getElementById('res-fat-cal').innerText = `${Math.round(fatCal)} kcal`;
+
+            if (totalCal > 0) {
+                document.getElementById('res-carbs-pct').innerText = `(${(carbsCal / totalCal * 100).toFixed(1)}%)`;
+                document.getElementById('res-protein-pct').innerText = `(${(proteinCal / totalCal * 100).toFixed(1)}%)`;
+                document.getElementById('res-fat-pct').innerText = `(${(fatCal / totalCal * 100).toFixed(1)}%)`;
+            } else {
+                document.getElementById('res-carbs-pct').innerText = `(0%)`;
+                document.getElementById('res-protein-pct').innerText = `(0%)`;
+                document.getElementById('res-fat-pct').innerText = `(0%)`;
+            }
+
+            updateChart(carbsCal, proteinCal, fatCal, alcoholCal);
+        }
+
+        function initMacroChart() {
+            const ctx = document.getElementById('macroChart').getContext('2d');
+            macroChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['碳水化合物', '蛋白質', '脂肪', '酒精'],
+                    datasets: [{
+                        data: [120, 100, 90, 0],
+                        backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#a855f7'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { font: { size: 11 }, boxWidth: 12 }
+                        }
+                    },
+                    cutout: '65%'
+                }
+            });
+        }
+
+        function updateChart(c, p, f, a) {
+            if (!macroChartInstance) return;
+            macroChartInstance.data.datasets[0].data = [c, p, f, a];
+            macroChartInstance.update();
+        }
+
+        // Portions Calculator logic
+        function updatePortionCalculator() {
+            const cat = document.getElementById('portion-category-select').value;
+            const count = parseFloat(document.getElementById('portion-count-input').value) || 0;
+
+            let calPerPortion = 70;
+            let carbs = 15, protein = 2, fat = 0;
+
+            switch(cat) {
+                case 'grains': calPerPortion = 70; carbs = 15; protein = 2; fat = 0; break;
+                case 'protein_low': calPerPortion = 75; carbs = 0; protein = 7; fat = 3; break;
+                case 'protein_mid': calPerPortion = 120; carbs = 0; protein = 7; fat = 5; break;
+                case 'veggies': calPerPortion = 25; carbs = 5; protein = 1; fat = 0; break;
+                case 'fruits': calPerPortion = 60; carbs = 15; protein = 0; fat = 0; break;
+                case 'dairy_full': calPerPortion = 150; carbs = 12; protein = 8; fat = 8; break;
+                case 'fat': calPerPortion = 45; carbs = 0; protein = 0; fat = 5; break;
+            }
+
+            const totCal = Math.round(calPerPortion * count);
+            const totC = (carbs * count).toFixed(1);
+            const totP = (protein * count).toFixed(1);
+            const totF = (fat * count).toFixed(1);
+
+            document.getElementById('portion-calc-result').innerText = `${totCal} kcal (碳水 ${totC}g, 蛋白 ${totP}g, 脂肪 ${totF}g)`;
+        }
+
+        function renderFoodDatabase(items) {
+            const container = document.getElementById('food-db-grid');
+            container.innerHTML = '';
+
+            if (items.length === 0) {
+                container.innerHTML = `<p class="col-span-full text-center text-slate-400 py-8 text-sm">找不到符合的食物項目</p>`;
+                return;
+            }
+
+            items.forEach(item => {
+                const card = document.createElement('div');
+                card.className = "bg-white border border-slate-200 rounded-xl p-4 hover:shadow-md transition flex flex-col justify-between space-y-3";
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-start">
+                            <h4 class="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+                                <i class="fa-solid ${item.icon || 'fa-utensils'} text-emerald-500"></i> ${item.name}
+                            </h4>
+                            <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">${item.calories} kcal</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-0.5">標準份量: ${item.weight}</p>
+                        <div class="grid grid-cols-3 gap-1 mt-3 text-[11px] text-slate-600 bg-slate-50 p-2 rounded-lg text-center">
+                            <div>碳水: <span class="font-semibold">${item.carbs}g</span></div>
+                            <div>蛋白: <span class="font-semibold">${item.protein}g</span></div>
+                            <div>脂肪: <span class="font-semibold">${item.fat}g</span></div>
+                        </div>
+                    </div>
+                    <button onclick='addDbFoodToTracker(${JSON.stringify(item)})' class="w-full py-1.5 bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 text-xs font-medium rounded-lg transition flex items-center justify-center gap-1">
+                        <i class="fa-solid fa-plus text-[10px]"></i> 加入紀錄
+                    </button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function filterFoodDatabase() {
+            const query = document.getElementById('food-search-input').value.toLowerCase().trim();
+            const cat = document.getElementById('food-category-filter').value;
+
+            const filtered = foodDatabase.filter(item => {
+                const matchesSearch = item.name.toLowerCase().includes(query);
+                const matchesCat = cat === 'all' || item.category === cat;
+                return matchesSearch && matchesCat;
+            });
+
+            renderFoodDatabase(filtered);
+        }
+
+        // Daily Tracker Logic
+        function addCustomFoodToTracker() {
+            const name = document.getElementById('input-food-name').value.trim() || '自訂餐點';
+            const carbs = parseFloat(document.getElementById('input-carbs').value) || 0;
+            const protein = parseFloat(document.getElementById('input-protein').value) || 0;
+            const fat = parseFloat(document.getElementById('input-fat').value) || 0;
+            const alcohol = parseFloat(document.getElementById('input-alcohol').value) || 0;
+            const totalCal = (carbs * 4) + (protein * 4) + (fat * 9) + (alcohol * 7);
+
+            const newItem = {
+                id: Date.now(),
+                name,
+                calories: Math.round(totalCal),
+                carbs,
+                protein,
+                fat
+            };
+
+            dailyLog.push(newItem);
+            saveLogAndRender();
+            showToast(`已成功加入「${name}」！`);
+        }
+
+        function addDbFoodToTracker(item) {
+            const newItem = {
+                id: Date.now(),
+                name: item.name,
+                calories: item.calories,
+                carbs: item.carbs,
+                protein: item.protein,
+                fat: item.fat
+            };
+
+            dailyLog.push(newItem);
+            saveLogAndRender();
+            showToast(`已新增「${item.name}」到飲食日誌！`);
+        }
+
+        function removeLogItem(id) {
+            dailyLog = dailyLog.filter(item => item.id !== id);
+            saveLogAndRender();
+            showToast('已刪除食物項目', 'info');
+        }
+
+        function clearDailyLog() {
+            dailyLog = [];
+            saveLogAndRender();
+            showToast('已清空今日所有紀錄', 'info');
+        }
+
+        function saveLogAndRender() {
+            localStorage.setItem('dailyLog', JSON.stringify(dailyLog));
+            renderDailyLog();
+        }
+
+        function renderDailyLog() {
+            const listContainer = document.getElementById('daily-log-list');
+            listContainer.innerHTML = '';
+
+            let totalCal = 0, totalCarbs = 0, totalProtein = 0, totalFat = 0;
+
+            if (dailyLog.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="text-center py-12 border-2 border-dashed border-slate-100 rounded-xl">
+                        <i class="fa-solid fa-utensils text-slate-300 text-3xl mb-2"></i>
+                        <p class="text-sm text-slate-400">今日尚未紀錄任何食物</p>
+                        <p class="text-xs text-slate-300 mt-1">您可以從自訂計算器或食物資料庫新增項目</p>
+                    </div>
+                `;
+            } else {
+                dailyLog.forEach(item => {
+                    totalCal += item.calories;
+                    totalCarbs += item.carbs;
+                    totalProtein += item.protein;
+                    totalFat += item.fat;
+
+                    const div = document.createElement('div');
+                    div.className = "flex items-center justify-between p-3.5 bg-slate-50 border border-slate-100 rounded-xl hover:bg-white hover:border-slate-200 transition";
+                    div.innerHTML = `
+                        <div class="space-y-0.5">
+                            <h4 class="font-bold text-slate-800 text-sm">${item.name}</h4>
+                            <p class="text-xs text-slate-500">碳水: ${item.carbs}g | 蛋白: ${item.protein}g | 脂肪: ${item.fat}g</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="font-bold text-emerald-600 text-sm">${item.calories} kcal</span>
+                            <button onclick="removeLogItem(${item.id})" class="text-slate-300 hover:text-red-500 transition px-1">
+                                <i class="fa-solid fa-xmark text-sm"></i>
+                            </button>
+                        </div>
+                    `;
+                    listContainer.appendChild(div);
+                });
+            }
+
+            // Update Summary Card
+            document.getElementById('log-count-badge').innerText = `${dailyLog.length} 項項目`;
+            document.getElementById('tracker-consumed-cal').innerText = Math.round(totalCal);
+            document.getElementById('tracker-target-cal').innerText = userTargetCal;
+
+            const remaining = userTargetCal - totalCal;
+            const remainingElem = document.getElementById('tracker-remaining-cal');
+            remainingElem.innerText = Math.round(remaining);
+            if (remaining < 0) {
+                remainingElem.className = "text-3xl font-black text-red-500";
+            } else {
+                remainingElem.className = "text-3xl font-black text-emerald-600";
+            }
+
+            const pct = Math.min(100, Math.max(0, (totalCal / userTargetCal) * 100));
+            const progressBar = document.getElementById('tracker-progress-bar');
+            progressBar.style.width = `${pct}%`;
+            if (pct >= 100) {
+                progressBar.className = "bg-red-500 h-3 rounded-full transition-all duration-300";
+            } else {
+                progressBar.className = "bg-emerald-500 h-3 rounded-full transition-all duration-300";
+            }
+
+            document.getElementById('tracker-carbs-val').innerText = `${Math.round(totalCarbs)}g`;
+            document.getElementById('tracker-protein-val').innerText = `${Math.round(totalProtein)}g`;
+            document.getElementById('tracker-fat-val').innerText = `${Math.round(totalFat)}g`;
+        }
+
+        function openTdeeModal() {
+            document.getElementById('tdee-modal').classList.remove('hidden');
+        }
+
+        function closeTdeeModal() {
+            document.getElementById('tdee-modal').classList.add('hidden');
+        }
+
+        function updateTdeeModalCalculations() {
+            const gender = document.getElementById('tdee-gender').value;
+            const age = parseFloat(document.getElementById('tdee-age').value) || 25;
+            const h = parseFloat(document.getElementById('tdee-height').value) || 170;
+            const w = parseFloat(document.getElementById('tdee-weight').value) || 65;
+            const act = parseFloat(document.getElementById('tdee-activity').value) || 1.55;
+            const goal = parseFloat(document.getElementById('tdee-goal').value) || 0;
+
+            // Mifflin-St Jeor Formula
+            let bmr = (10 * w) + (6.25 * h) - (5 * age);
+            if (gender === 'male') {
+                bmr += 5;
+            } else {
+                bmr -= 161;
+            }
+
+            const tdee = bmr * act;
+            const finalTarget = Math.round(tdee + goal);
+
+            document.getElementById('modal-bmr-val').innerText = Math.round(bmr);
+            document.getElementById('modal-tdee-val').innerText = Math.round(tdee);
+            return finalTarget;
+        }
+
+        // Add input event listeners to recalculate dynamically
+        ['tdee-gender', 'tdee-age', 'tdee-height', 'tdee-weight', 'tdee-activity', 'tdee-goal'].forEach(id => {
+            document.getElementById(id).addEventListener('change', updateTdeeModalCalculations);
+            document.getElementById(id).addEventListener('input', updateTdeeModalCalculations);
+        });
+
+        function saveTdeeGoal() {
+            const targetCal = updateTdeeModalCalculations();
+            userTargetCal = targetCal;
+            localStorage.setItem('targetCal', targetCal);
+            renderDailyLog();
+            closeTdeeModal();
+            showToast(`目標卡路里已更新為 ${targetCal} kcal！`);
+        }
+
+        function copyMacroResult() {
+            const cal = document.getElementById('res-total-calories').innerText;
+            const c = document.getElementById('input-carbs').value;
+            const p = document.getElementById('input-protein').value;
+            const f = document.getElementById('input-fat').value;
+
+            const text = `【營養素換算結果】\n總熱量: ${cal} kcal\n碳水化合物: ${c}g\n蛋白質: ${p}g\n脂肪: ${f}g`;
+
+            const dummy = document.createElement("textarea");
+            document.body.appendChild(dummy);
+            dummy.value = text;
+            dummy.select();
+            document.execCommand("copy");
+            document.body.removeChild(dummy);
+
+            showToast('已複製計算結果至剪貼簿！');
+        }
+
+        function showToast(msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toast-icon');
+            const msgElem = document.getElementById('toast-msg');
+
+            msgElem.innerText = msg;
+            if (type === 'info') {
+                icon.className = "fa-solid fa-circle-info text-blue-400";
+            } else {
+                icon.className = "fa-solid fa-circle-check text-emerald-400";
+            }
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 2500);
+        }
+    </script>
+</body>
+</html>
